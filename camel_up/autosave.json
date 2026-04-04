@@ -1,0 +1,140 @@
+{
+  "players": [
+    {
+      "name": "Alice",
+      "coins": 16,
+      "leg_bets": [],
+      "race_bets": [],
+      "desert_tile": null,
+      "desert_tile_placed": false
+    },
+    {
+      "name": "Bob",
+      "coins": 15,
+      "leg_bets": [],
+      "race_bets": [],
+      "desert_tile": null,
+      "desert_tile_placed": false
+    }
+  ],
+  "camels": [
+    {
+      "color": "green",
+      "position": 15,
+      "stack_order": 0,
+      "is_crazy": false
+    },
+    {
+      "color": "purple",
+      "position": 13,
+      "stack_order": 0,
+      "is_crazy": false
+    },
+    {
+      "color": "yellow",
+      "position": 13,
+      "stack_order": 1,
+      "is_crazy": false
+    },
+    {
+      "color": "blue",
+      "position": 18,
+      "stack_order": 0,
+      "is_crazy": false
+    },
+    {
+      "color": "red",
+      "position": 9,
+      "stack_order": 0,
+      "is_crazy": false
+    },
+    {
+      "color": "black",
+      "position": 11,
+      "stack_order": 0,
+      "is_crazy": true
+    },
+    {
+      "color": "white",
+      "position": 14,
+      "stack_order": 0,
+      "is_crazy": true
+    }
+  ],
+  "current_player_idx": 0,
+  "dice_remaining": [
+    "green",
+    "yellow",
+    "red",
+    "grey"
+  ],
+  "leg_number": 5,
+  "turn_number": 24,
+  "game_over": true,
+  "winner": "Alice",
+  "desert_tiles": {},
+  "available_leg_bets": {
+    "green": [
+      5,
+      3,
+      2,
+      1
+    ],
+    "purple": [
+      5,
+      3,
+      2,
+      1
+    ],
+    "yellow": [
+      5,
+      3,
+      2,
+      1
+    ],
+    "blue": [
+      5,
+      3,
+      2,
+      1
+    ],
+    "red": [
+      5,
+      3,
+      2,
+      1
+    ]
+  },
+  "event_log": [
+    "Alice rolled blue \u21923 \u2192 tile 5",
+    "Bob rolled purple \u21922 \u2192 tile 5",
+    "Alice rolled yellow \u21921 \u2192 tile 6",
+    "Bob rolled green \u21922 \u2192 tile 8",
+    "\u2500\u2500 Leg ended.  1st: green  2nd: yellow.  Starting leg 2. \u2500\u2500",
+    "Alice rolled red \u21922 \u2192 tile 3",
+    "Bob rolled purple \u21921 \u2192 tile 6",
+    "Alice rolled blue \u21923 \u2192 tile 8",
+    "Bob rolled yellow \u21922 \u2192 tile 8",
+    "Alice rolled red \u21921 \u2192 tile 4",
+    "Bob rolled [grey\u2192black] grey \u21901 \u2192 tile 14",
+    "\u2500\u2500 Leg ended.  1st: purple  2nd: yellow.  Starting leg 3. \u2500\u2500",
+    "Alice rolled green \u21921 \u2192 tile 9",
+    "Bob rolled [grey\u2192white] grey \u21902 \u2192 tile 14",
+    "Alice rolled yellow \u21921 \u2192 tile 10",
+    "Bob rolled green \u21923 \u2192 tile 12",
+    "Alice rolled blue \u21921 \u2192 tile 13",
+    "Bob rolled red \u21923 \u2192 tile 7",
+    "\u2500\u2500 Leg ended.  1st: purple  2nd: blue.  Starting leg 4. \u2500\u2500",
+    "Alice rolled purple \u21923 \u2192 tile 13",
+    "Bob rolled purple \u21921 \u2192 tile 14",
+    "Alice rolled [grey\u2192black] grey \u21903 \u2192 tile 11",
+    "Bob rolled yellow \u21921 \u2192 tile 11",
+    "Alice rolled red \u21922 \u2192 tile 9",
+    "Bob rolled green \u21923 \u2192 tile 15",
+    "\u2500\u2500 Leg ended.  1st: blue  2nd: green.  Starting leg 5. \u2500\u2500",
+    "Alice rolled blue \u21922 \u2192 tile 15",
+    "Bob rolled purple \u21922 \u2192 tile 13",
+    "\ud83c\udfc6 Race over!  Race winner camel: blue  Race loser camel: red.  Game winner: Alice (15 coins).",
+    "Alice rolled blue \u21923 \u2192 tile 18"
+  ]
+}

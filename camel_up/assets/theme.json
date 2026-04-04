@@ -1,0 +1,147 @@
+{
+    "defaults": {
+        "colours": {
+            "normal_bg": "#5C3D1E",
+            "hovered_bg": "#8B5E3C",
+            "disabled_bg": "#2A1508",
+            "selected_bg": "#8B5E3C",
+            "active_bg": "#8B5E3C",
+            "normal_text": "#F5E6C8",
+            "hovered_text": "#F5E6C8",
+            "disabled_text": "#7A6040",
+            "selected_text": "#F5E6C8",
+            "active_text": "#F5E6C8",
+            "normal_border": "#C4A96D",
+            "hovered_border": "#D4B483",
+            "disabled_border": "#3D2010",
+            "selected_border": "#D4A017",
+            "active_border": "#D4A017",
+            "link_text": "#D4A017",
+            "link_hover": "#E8D5A3",
+            "link_selected": "#D4A017",
+            "text_cursor": "#F5E6C8",
+            "text_shadow": "#1A0800",
+            "filled_bar": "#D4A017",
+            "unfilled_bar": "#3D1F0A"
+        },
+        "font": {
+            "name": "cinzel_bold",
+            "regular_path": "assets/fonts/Cinzel-Bold.otf",
+            "bold_path": "assets/fonts/Cinzel-Bold.otf",
+            "size": "16",
+            "bold": "1",
+            "italic": "0"
+        },
+        "shape": "rounded_rectangle",
+        "shape_corner_radius": "8",
+        "border_width": "2",
+        "shadow_width": "2",
+        "padding": "6,6"
+    },
+    "button": {
+        "colours": {
+            "normal_bg": "#5C3D1E",
+            "hovered_bg": "#8B5E3C",
+            "disabled_bg": "#2A1508",
+            "selected_bg": "#8B5E3C",
+            "active_bg": "#704828",
+            "normal_text": "#F5E6C8",
+            "hovered_text": "#FFFFFF",
+            "disabled_text": "#5A4830",
+            "normal_border": "#C4A96D",
+            "hovered_border": "#D4B483",
+            "disabled_border": "#3D2010"
+        },
+        "font": {
+            "name": "cinzel_bold_btn",
+            "regular_path": "assets/fonts/Cinzel-Bold.otf",
+            "bold_path": "assets/fonts/Cinzel-Bold.otf",
+            "size": "16",
+            "bold": "1"
+        },
+        "shape": "rounded_rectangle",
+        "shape_corner_radius": "8",
+        "border_width": "2"
+    },
+    "text_box": {
+        "colours": {
+            "dark_bg": "#E8D5A3",
+            "normal_text": "#3D1F0A",
+            "normal_border": "#C4A96D",
+            "selected_bg": "#D4A017",
+            "selected_text": "#3D1F0A"
+        },
+        "font": {
+            "name": "cinzel_bold_tb",
+            "regular_path": "assets/fonts/Cinzel-Bold.otf",
+            "bold_path": "assets/fonts/Cinzel-Bold.otf",
+            "size": "14",
+            "bold": "1"
+        },
+        "border_width": "1"
+    },
+    "text_entry_line": {
+        "colours": {
+            "dark_bg": "#E8D5A3",
+            "normal_text": "#3D1F0A",
+            "normal_border": "#C4A96D",
+            "focused_border": "#D4A017",
+            "selected_bg": "#D4A017",
+            "selected_text": "#3D1F0A",
+            "text_cursor": "#3D1F0A"
+        },
+        "font": {
+            "name": "cinzel_bold_tel",
+            "regular_path": "assets/fonts/Cinzel-Bold.otf",
+            "bold_path": "assets/fonts/Cinzel-Bold.otf",
+            "size": "15",
+            "bold": "1"
+        },
+        "border_width": "2",
+        "shape_corner_radius": "6"
+    },
+    "panel": {
+        "colours": {
+            "dark_bg": "#3D1F0A",
+            "normal_border": "#8B5E3C"
+        },
+        "border_width": "2",
+        "shadow_width": "3"
+    },
+    "scrolling_container": {
+        "colours": {
+            "dark_bg": "#3D1F0A",
+            "normal_border": "#5C3D1E"
+        }
+    },
+    "vertical_scroll_bar": {
+        "colours": {
+            "normal_bg": "#5C3D1E",
+            "hovered_bg": "#8B5E3C",
+            "normal_border": "#C4A96D",
+            "dark_bg": "#2A1508"
+        }
+    },
+    "label": {
+        "colours": {
+            "normal_text": "#F5E6C8",
+            "dark_bg": "#00000000"
+        },
+        "font": {
+            "name": "cinzel_bold_lbl",
+            "regular_path": "assets/fonts/Cinzel-Bold.otf",
+            "bold_path": "assets/fonts/Cinzel-Bold.otf",
+            "size": "15",
+            "bold": "1"
+        }
+    },
+    "selection_list": {
+        "colours": {
+            "dark_bg": "#3D1F0A",
+            "normal_border": "#8B5E3C",
+            "normal_text": "#F5E6C8",
+            "hovered_bg": "#5C3D1E",
+            "selected_bg": "#8B5E3C"
+        }
+    }
+}
