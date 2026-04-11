@@ -1,4 +1,5 @@
 import sys
+import os
 import logging
 import pygame
 import pygame_gui
@@ -8,7 +9,7 @@ from storage.database import init_db
 
 logger = logging.getLogger(__name__)
 
-_THEME_PATH = 'assets/theme.json'
+_THEME_PATH = os.path.join(os.path.dirname(__file__), '..', 'assets', 'theme.json')
 
 
 class App:

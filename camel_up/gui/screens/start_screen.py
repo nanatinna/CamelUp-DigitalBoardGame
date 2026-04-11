@@ -1,5 +1,6 @@
 import pygame
 import pygame_gui
+import os
 
 from gui.theme import (
     SAND_LIGHT, WOOD_DARK, WOOD_MID, TEXT_LIGHT, TEXT_DARK,
@@ -91,7 +92,8 @@ class StartScreen:
     def _get_logo(self):
         if self._logo is None:
             try:
-                img = pygame.image.load('assets/images/logo.png').convert_alpha()
+                logo_path = os.path.join(os.path.dirname(__file__), '..', '..', 'assets', 'images', 'logo.png')
+                img = pygame.image.load(logo_path).convert_alpha()
                 w, h = img.get_size()
                 max_w, max_h = 520, 210
                 scale = min(max_w / w, max_h / h)

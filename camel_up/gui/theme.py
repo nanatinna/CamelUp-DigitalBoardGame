@@ -90,7 +90,8 @@ def get_camel_color(color_name: str) -> tuple:
 # ---------------------------------------------------------------------------
 
 
-_FONT_PATH = 'assets/fonts/Cinzel-Bold.otf'
+import os as _os
+_FONT_PATH = _os.path.join(_os.path.dirname(__file__), '..', 'assets', 'fonts', 'Cinzel-Bold.otf')
 
 
 def _ensure_font_init() -> None:

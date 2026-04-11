@@ -26,8 +26,8 @@
         },
         "font": {
             "name": "cinzel_bold",
-            "regular_path": "assets/fonts/Cinzel-Bold.otf",
-            "bold_path": "assets/fonts/Cinzel-Bold.otf",
+            "regular_path": "camel_up/assets/fonts/Cinzel-Bold.otf",
+            "bold_path": "camel_up/assets/fonts/Cinzel-Bold.otf",
             "size": "16",
             "bold": "1",
             "italic": "0"
@@ -54,8 +54,8 @@
         },
         "font": {
             "name": "cinzel_bold_btn",
-            "regular_path": "assets/fonts/Cinzel-Bold.otf",
-            "bold_path": "assets/fonts/Cinzel-Bold.otf",
+            "regular_path": "camel_up/assets/fonts/Cinzel-Bold.otf",
+            "bold_path": "camel_up/assets/fonts/Cinzel-Bold.otf",
             "size": "16",
             "bold": "1"
         },
@@ -73,8 +73,8 @@
         },
         "font": {
             "name": "cinzel_bold_tb",
-            "regular_path": "assets/fonts/Cinzel-Bold.otf",
-            "bold_path": "assets/fonts/Cinzel-Bold.otf",
+            "regular_path": "camel_up/assets/fonts/Cinzel-Bold.otf",
+            "bold_path": "camel_up/assets/fonts/Cinzel-Bold.otf",
             "size": "14",
             "bold": "1"
         },
@@ -92,8 +92,8 @@
         },
         "font": {
             "name": "cinzel_bold_tel",
-            "regular_path": "assets/fonts/Cinzel-Bold.otf",
-            "bold_path": "assets/fonts/Cinzel-Bold.otf",
+            "regular_path": "camel_up/assets/fonts/Cinzel-Bold.otf",
+            "bold_path": "camel_up/assets/fonts/Cinzel-Bold.otf",
             "size": "15",
             "bold": "1"
         },
@@ -129,8 +129,8 @@
         },
         "font": {
             "name": "cinzel_bold_lbl",
-            "regular_path": "assets/fonts/Cinzel-Bold.otf",
-            "bold_path": "assets/fonts/Cinzel-Bold.otf",
+            "regular_path": "camel_up/assets/fonts/Cinzel-Bold.otf",
+            "bold_path": "camel_up/assets/fonts/Cinzel-Bold.otf",
             "size": "15",
             "bold": "1"
         }

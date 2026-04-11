@@ -1,5 +1,6 @@
 import pygame
 import pygame_gui
+import os
 
 from gui.theme import (
     WOOD_DARK, WOOD_MID, TEXT_LIGHT, GOLD, WHITE, BLACK,
@@ -46,6 +47,10 @@ class GameScreen:
         self._overlay_btns:    dict = {}
         self._overlay_type_btns: dict = {}
 
+        # Dice result popup state
+        self._dice_result_popup = False
+        self._dice_result = None  # {'color': '', 'steps': 0, 'camel_moved': ''}
+
         # Tile placement state
         self._tile_mode        = False
         self._tile_type        = None
@@ -58,7 +63,8 @@ class GameScreen:
     def _get_logo(self):
         if self._logo is None:
             try:
-                img = pygame.image.load('assets/images/logo.png').convert_alpha()
+                logo_path = os.path.join(os.path.dirname(__file__), '..', '..', 'assets', 'images', 'logo.png')
+                img = pygame.image.load(logo_path).convert_alpha()
                 w, h = img.get_size()
                 new_h = TOP_BAR_H - 6
                 self._logo = pygame.transform.smoothscale(
@@ -73,6 +79,11 @@ class GameScreen:
 
     # --------------------------------------------------------------- events
     def handle_event(self, event: pygame.event.Event):
+        # Dice result popup has exclusive focus
+        if self._dice_result_popup:
+            self._handle_dice_result_event(event)
+            return
+
         # Bet overlay has exclusive focus
         if self._bet_overlay:
             self._handle_bet_event(event)
@@ -124,20 +135,31 @@ class GameScreen:
     def _do_roll(self):
         state  = self.game.get_state()
         result = self.game.roll_dice(state.current_player_idx)
-        die_color    = result['color']
-        camel_moved  = result.get('camel_moved', die_color)
-        steps        = result['steps']
-        new_pos      = result.get('new_position', 0)
-        self.board.animate_camel_move(camel_moved, new_pos)
-        self.dice_pyramid.animate_roll(die_color, steps, camel_moved)
-        if not self.game.get_state().game_over:
-            self.game.advance_turn()
-        self._post_action()
-        if self.game.get_state().game_over:
-            self.app.show_end_screen(self.game)
+        # Show dice result popup
+        self._dice_result_popup = True
+        self._dice_result = result
 
     def _post_action(self):
         pass
+
+    # ------------------------------------------------------ dice result popup
+    def _handle_dice_result_event(self, event: pygame.event.Event):
+        if event.type == pygame.MOUSEBUTTONDOWN or event.type == pygame.KEYDOWN:
+            # Any click or key closes the popup and executes the animation
+            self._dice_result_popup = False
+            if self._dice_result:
+                die_color    = self._dice_result['color']
+                camel_moved  = self._dice_result.get('camel_moved', die_color)
+                steps        = self._dice_result['steps']
+                new_pos      = self._dice_result.get('new_position', 0)
+                self.board.animate_camel_move(camel_moved, new_pos)
+                self.dice_pyramid.animate_roll(die_color, steps, camel_moved)
+                if not self.game.get_state().game_over:
+                    self.game.advance_turn()
+                self._post_action()
+                if self.game.get_state().game_over:
+                    self.app.show_end_screen(self.game)
+            self._dice_result = None
 
     # --------------------------------------------------------- bet overlay
     def _handle_bet_event(self, event: pygame.event.Event):
@@ -280,12 +302,64 @@ class GameScreen:
         self.event_log.draw(surface, state.event_log)
 
         # Overlays
+        if self._dice_result_popup:
+            self._draw_dice_result_popup(surface)
         if self._bet_overlay:
             self._draw_bet_overlay(surface, state)
         if self._tile_type_overlay:
             self._draw_tile_type_overlay(surface)
 
     # --------------------------------------------------- overlay rendering
+    def _draw_dice_result_popup(self, surface: pygame.Surface):
+        """Draw a full-screen dice result popup."""
+        # Semi-transparent overlay
+        ov = pygame.Surface((WINDOW_W, WINDOW_H), pygame.SRCALPHA)
+        ov.fill((0, 0, 0, 160))
+        surface.blit(ov, (0, 0))
+
+        # Panel dimensions
+        panel_w, panel_h = 500, 400
+        panel = pygame.Rect(WINDOW_W // 2 - panel_w // 2, WINDOW_H // 2 - panel_h // 2, panel_w, panel_h)
+
+        # Draw panel background and border
+        pygame.draw.rect(surface, WOOD_DARK, panel, border_radius=16)
+        pygame.draw.rect(surface, GOLD, panel, width=4, border_radius=16)
+
+        # Fonts
+        fn_title = load_font(28)  # Title font
+        fn_main  = load_font(48)  # Large font for result
+        fn_label = load_font(16)  # Label font
+
+        if self._dice_result:
+            die_color = self._dice_result['color']
+            steps = self._dice_result['steps']
+            camel_moved = self._dice_result.get('camel_moved', die_color)
+            is_crazy = self._dice_result.get('is_crazy', False)
+
+            # Title
+            title = fn_title.render("DICE RESULT", True, GOLD)
+            surface.blit(title, (panel.centerx - title.get_width() // 2, panel.y + 20))
+
+            # Display die color
+            if die_color == 'grey':
+                die_display = f"GREY DIE → {camel_moved.upper()}"
+                die_text_color = (180, 180, 180)
+            else:
+                die_display = die_color.upper()
+                die_text_color = CAMEL_COLOR_MAP.get(die_color, WHITE)
+
+            die_label = fn_main.render(die_display, True, die_text_color)
+            surface.blit(die_label, (panel.centerx - die_label.get_width() // 2, panel.y + 80))
+
+            # Display steps with arrow
+            arrow = "←" if is_crazy else "→"
+            steps_text = fn_main.render(f"{arrow} {steps} {arrow}", True, WHITE)
+            surface.blit(steps_text, (panel.centerx - steps_text.get_width() // 2, panel.y + 160))
+
+            # Instructions
+            instruction = fn_label.render("Click or press any key to continue", True, (200, 180, 140))
+            surface.blit(instruction, (panel.centerx - instruction.get_width() // 2, panel.y + panel_h - 40))
+
     def _draw_bet_overlay(self, surface: pygame.Surface, state):
         ov = pygame.Surface((WINDOW_W, WINDOW_H), pygame.SRCALPHA)
         ov.fill((0, 0, 0, 140))
