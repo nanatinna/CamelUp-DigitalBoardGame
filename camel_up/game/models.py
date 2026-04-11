@@ -42,6 +42,7 @@ class Player:
     race_bets: list = field(default_factory=list)  # list[RaceBet]
     desert_tile: Optional[dict] = None             # {'tile': int, 'type': str}
     desert_tile_placed: bool = False
+    coin_log: list = field(default_factory=list)   # Track coin sources for results screen
 
 
 @dataclass

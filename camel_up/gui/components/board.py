@@ -202,21 +202,44 @@ class Board:
         #     surface.blit(fin, (rect.x + 2, rect.bottom - 25))
 
     def _draw_oasis_icon(self, surface: pygame.Surface, r: pygame.Rect):
-        cx, cy = r.centerx, r.centery + 6
-        pygame.draw.rect(surface, (120, 80, 30), pygame.Rect(cx - 2, cy - 6, 4, 10))
-        pygame.draw.circle(surface, (34, 139, 34), (cx, cy - 10), 7)
-        pygame.draw.circle(surface, (34, 139, 34), (cx - 6, cy - 6), 5)
-        pygame.draw.circle(surface, (34, 139, 34), (cx + 6, cy - 6), 5)
-        lbl = self._font_small.render("+1", True, (0, 140, 0))
-        surface.blit(lbl, (cx - 6, cy + 4))
+        """Draw oasis tile with green background."""
+        # Create background box
+        bg_size = 36
+        bg_x = r.centerx - bg_size // 2
+        bg_y = r.centery - bg_size // 2
+        bg_rect = pygame.Rect(bg_x, bg_y, bg_size, bg_size)
+
+        # Draw green background
+        pygame.draw.rect(surface, (34, 180, 76), bg_rect)  # Clear green
+        pygame.draw.rect(surface, (20, 120, 50), bg_rect, width=1)  # Dark green border
+
+        # Draw oasis icon inside
+        cx, cy = r.centerx, r.centery
+
+        # Tree trunk
+        pygame.draw.rect(surface, (101, 67, 33), pygame.Rect(cx - 2, cy - 1, 4, 6))
+        # Tree foliage
+        pygame.draw.circle(surface, (100, 255, 100), (cx, cy - 7), 6)
+        pygame.draw.circle(surface, (100, 255, 100), (cx - 5, cy - 4), 4)
+        pygame.draw.circle(surface, (100, 255, 100), (cx + 5, cy - 4), 4)
 
     def _draw_mirage_icon(self, surface: pygame.Surface, r: pygame.Rect):
-        cx, cy = r.centerx, r.centery + 8
-        pts = [(cx - 10 + i, cy + int(math.sin(i * 0.7) * 3)) for i in range(20)]
+        """Draw mirage tile with red background."""
+        # Create background box
+        bg_size = 36
+        bg_x = r.centerx - bg_size // 2
+        bg_y = r.centery - bg_size // 2
+        bg_rect = pygame.Rect(bg_x, bg_y, bg_size, bg_size)
+
+        # Draw red background
+        pygame.draw.rect(surface, (220, 53, 69), bg_rect)  # Clear red
+        pygame.draw.rect(surface, (150, 30, 40), bg_rect, width=1)  # Dark red border
+
+        # Draw mirage icon inside (wavy lines)
+        cx, cy = r.centerx, r.centery
+        pts = [(cx - 12 + i, cy + int(math.sin(i * 0.6) * 3)) for i in range(24)]
         if len(pts) > 1:
-            pygame.draw.lines(surface, RED, False, pts, 2)
-        lbl = self._font_small.render("-1", True, RED)
-        surface.blit(lbl, (cx - 6, cy + 5))
+            pygame.draw.lines(surface, (255, 255, 150), False, pts, 2)  # Light yellow wavy
 
     def _draw_all_camels(self, surface: pygame.Surface, game_state):
         if not game_state:

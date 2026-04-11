@@ -2,6 +2,7 @@ import pygame
 import pygame_gui
 import os
 import math
+import random
 
 from gui.theme import (
     WOOD_DARK, WOOD_MID, TEXT_LIGHT, GOLD, WHITE, BLACK,
@@ -59,6 +60,13 @@ class GameScreen:
         self._dice_anim_frames    = 90         # Duration: 1.5 seconds at 60 FPS
         self._dice_tumble_rotation = 0.0       # Current rotation angle for die tumble
 
+        # Camel walk animation state
+        self._camel_walk_active = False        # Is walk animation playing?
+        self._camel_walk_progress = 0.0        # 0.0 to 1.0
+        self._camel_walk_data = None           # {'color', 'steps', 'new_pos', 'current_pos', 'result'}
+        self._camel_walk_frames = 90            # Total frames: 1.5sec @ 60FPS for walk
+        self._dust_particles = []               # List of dust puff particles
+
         # Tile placement state
         self._tile_mode        = False
         self._tile_type        = None
@@ -87,6 +95,10 @@ class GameScreen:
 
     # --------------------------------------------------------------- events
     def handle_event(self, event: pygame.event.Event):
+        # Camel walk animation has exclusive focus
+        if self._camel_walk_active:
+            return  # Ignore input while walking
+
         # Dice roll animation has exclusive focus
         if self._dice_anim_active:
             return  # Ignore all input while animating
@@ -145,8 +157,33 @@ class GameScreen:
             self._tile_type_overlay = True
 
     def _do_roll(self):
-        state  = self.game.get_state()
+        state = self.game.get_state()
+
+        # CRITICAL: Capture camel positions AND stack_orders BEFORE rolling
+        # roll_dice() will update the state immediately, so we need the old state
+        pre_roll_state = {c.color: (c.position, c.stack_order) for c in state.camels}
+
         result = self.game.roll_dice(state.current_player_idx)
+
+        # CRITICAL: Capture the FINAL state AFTER rolling (before restoring for animation)
+        # This includes the correct stack_orders after move_camel updated them
+        post_roll_state = {c.color: (c.position, c.stack_order) for c in state.camels}
+
+        # Store the starting position in the result for walk animation
+        camel_moved = result.get('camel_moved')
+        if camel_moved and camel_moved in pre_roll_state:
+            result['start_position'] = pre_roll_state[camel_moved][0]
+            result['post_roll_state'] = post_roll_state  # Save final state to restore later
+
+            # CRITICAL FIX: Restore ALL affected camels to their pre-roll state
+            # roll_dice() has already updated positions and stack_orders,
+            # but we want the walk animation to show the movement from start → end
+            for c in state.camels:
+                if c.color in pre_roll_state:
+                    old_pos, old_stack_order = pre_roll_state[c.color]
+                    c.position = old_pos
+                    c.stack_order = old_stack_order
+
         # Trigger dice roll animation overlay
         self._dice_anim_active = True
         self._dice_anim_progress = 0.0
@@ -159,21 +196,83 @@ class GameScreen:
     # ------------------------------------------------------ dice result popup
     def _handle_dice_result_event(self, event: pygame.event.Event):
         if event.type == pygame.MOUSEBUTTONDOWN or event.type == pygame.KEYDOWN:
-            # Any click or key closes the popup and executes the animation
+            # Any click or key closes the popup and triggers camel walk animation
             self._dice_result_popup = False
             if self._dice_result:
-                die_color    = self._dice_result['color']
-                camel_moved  = self._dice_result.get('camel_moved', die_color)
-                steps        = self._dice_result['steps']
-                new_pos      = self._dice_result.get('new_position', 0)
-                self.board.animate_camel_move(camel_moved, new_pos)
-                self.dice_pyramid.animate_roll(die_color, steps, camel_moved)
-                if not self.game.get_state().game_over:
-                    self.game.advance_turn()
-                self._post_action()
-                if self.game.get_state().game_over:
-                    self.app.show_end_screen(self.game)
+                # Trigger camel walk animation instead of immediate state update
+                self._start_camel_walk_animation(self._dice_result)
             self._dice_result = None
+
+    def _start_camel_walk_animation(self, result):
+        """Trigger camel walk animation before state update."""
+        # Use the start_position that was captured BEFORE rolling
+        current_pos = result.get('start_position', 0)
+
+        # Only animate if the camel has a valid starting position on the board
+        if current_pos == 0:
+            # Camel wasn't on the board yet, just finalize immediately
+            self._finalize_camel_movement(result)
+            return
+
+        # Each step takes 21 frames — same as the per-step speed at 3 steps
+        # (0.70 walk-fraction × 90 total ÷ 3 steps = 21 frames/step).
+        # Using total = steps × 30 keeps the 0.70 walk fraction constant:
+        # 0.70 × (steps × 30) ÷ steps = 21 frames/step for any step count.
+        steps = result.get('steps', 1)
+        self._camel_walk_frames = max(1, steps * 30)
+
+        self._camel_walk_active = True
+        self._camel_walk_progress = 0.0
+        self._camel_walk_data = {
+            'color': result['camel_moved'],
+            'steps': result['steps'],
+            'new_pos': result['new_position'],
+            'current_pos': current_pos,
+            'result': result
+        }
+        self._dust_particles = []
+
+    def _spawn_dust(self, tile_pos):
+        """Create sand dust particles at given tile position."""
+        for _ in range(3):
+            self._dust_particles.append({
+                'x': tile_pos[0] + random.randint(-15, 15),
+                'y': tile_pos[1] + 15,
+                'size': random.randint(3, 6),
+                'life': 0.4,
+            })
+
+    def _finalize_camel_movement(self, result):
+        """Update game state after walk animation completes."""
+        state = self.game.get_state()
+
+        # Restore the post-roll state (with correct positions and stack_orders)
+        if 'post_roll_state' in result:
+            post_roll_state = result['post_roll_state']
+            for c in state.camels:
+                if c.color in post_roll_state:
+                    final_pos, final_stack_order = post_roll_state[c.color]
+                    c.position = final_pos
+                    c.stack_order = final_stack_order
+
+        # Now update board animation with final position
+        camel_moved = result.get('camel_moved')
+        new_pos = result.get('new_position', 0)
+        if camel_moved and new_pos:
+            self.board.animate_camel_move(camel_moved, new_pos)
+
+        # Animate dice pyramid
+        die_color = result.get('color', '')
+        steps = result.get('steps', 0)
+        if die_color and steps:
+            self.dice_pyramid.animate_roll(die_color, steps, camel_moved)
+
+        # Advance game state
+        if not self.game.get_state().game_over:
+            self.game.advance_turn()
+        self._post_action()
+        if self.game.get_state().game_over:
+            self.app.show_end_screen(self.game)
 
     # --------------------------------------------------------- bet overlay
     def _handle_bet_event(self, event: pygame.event.Event):
@@ -289,6 +388,21 @@ class GameScreen:
                 self._dice_result_popup = True
                 self._dice_result = self._dice_anim_result
 
+        # Camel walk animation (1.5 seconds = 90 frames)
+        if self._camel_walk_active:
+            self._camel_walk_progress += (1.0 / self._camel_walk_frames)
+
+            if self._camel_walk_progress >= 1.0:
+                # Animation complete - update game state now
+                self._camel_walk_active = False
+                self._camel_walk_progress = 0.0
+                self._finalize_camel_movement(self._camel_walk_data['result'])
+
+            # Update dust particle lifetimes
+            self._dust_particles = [p for p in self._dust_particles if p['life'] > 0]
+            for p in self._dust_particles:
+                p['life'] -= 0.016  # ~60fps
+
     # --------------------------------------------------------------- draw
     def draw(self, surface: pygame.Surface):
         self._get_fonts()
@@ -324,10 +438,12 @@ class GameScreen:
         self.player_hud.draw(surface, state, valid)
         self.board.draw(surface, state)
         self.bet_card.draw(surface, state.available_leg_bets)
-        self.dice_pyramid.draw(surface, state.dice_remaining)
+        self.dice_pyramid.draw(surface, state.dice_remaining, state.leg_number)
         self.event_log.draw(surface, state.event_log)
 
         # Overlays
+        if self._camel_walk_active:
+            self._draw_camel_walk_overlay(surface)
         if self._dice_anim_active:
             self._draw_dice_anim_overlay(surface)
         if self._dice_result_popup:
@@ -338,6 +454,96 @@ class GameScreen:
             self._draw_tile_type_overlay(surface)
 
     # --------------------------------------------------- overlay rendering
+    def _draw_camel_walk_overlay(self, surface: pygame.Surface):
+        """Draw camel walking animation with step-by-step movement and dust puffs."""
+        if not self._camel_walk_data:
+            return
+
+        progress = self._camel_walk_progress
+        data = self._camel_walk_data
+        steps = data['steps']
+        color = data['color']
+        start_pos = data['current_pos']
+        is_crazy = data['result'].get('is_crazy', False)  # Handle backwards movement
+
+        # Get tile positions from board
+        tile_positions = self.board.tile_positions if hasattr(self.board, 'tile_positions') else {}
+
+        if not tile_positions or start_pos not in tile_positions:
+            return
+
+        # Lift/land scale animation
+        if progress < 0.15:
+            scale = 1.0 + 0.2 * (progress / 0.15)
+        elif progress > 0.85:
+            scale = 1.2 - 0.2 * ((progress - 0.85) / 0.15)
+        else:
+            scale = 1.2
+
+        # Walking phase: 0.15 to 0.85
+        walk_progress = (progress - 0.15) / 0.7 if progress >= 0.15 else 0
+        walk_progress = max(0, min(1, walk_progress))
+
+        # Which step are we on?
+        step_progress = walk_progress * steps
+        current_step = min(int(step_progress), steps - 1)
+        progress_in_step = step_progress - current_step
+
+        # Spawn dust when completing steps
+        if is_crazy:
+            # Backwards movement
+            intermediate_tile = max(start_pos - current_step - 1, 1)
+        else:
+            # Forward movement
+            intermediate_tile = min(start_pos + current_step + 1, 16)
+
+        if progress_in_step > 0.9 and not hasattr(self, f'_dust_spawned_{current_step}'):
+            if intermediate_tile in tile_positions:
+                self._spawn_dust(tile_positions[intermediate_tile])
+            setattr(self, f'_dust_spawned_{current_step}', True)
+        elif progress_in_step < 0.1:
+            if hasattr(self, f'_dust_spawned_{current_step}'):
+                delattr(self, f'_dust_spawned_{current_step}')
+
+        # Get source and target tile positions for smooth step-by-step interpolation
+        if is_crazy:
+            # Backwards movement: tiles decrease
+            src_tile = start_pos - current_step
+            dst_tile = max(start_pos - current_step - 1, 1)
+        else:
+            # Forward movement: tiles increase
+            src_tile = start_pos + current_step
+            dst_tile = min(start_pos + current_step + 1, 16)
+
+        if src_tile in tile_positions and dst_tile in tile_positions:
+            src_pos = tile_positions[src_tile]
+            dst_pos = tile_positions[dst_tile]
+
+            # Interpolate position
+            x = src_pos[0] + (dst_pos[0] - src_pos[0]) * progress_in_step
+            y = src_pos[1] + (dst_pos[1] - src_pos[1]) * progress_in_step
+
+            # Arc motion: up in middle, down at edges (~20px arc)
+            arc_height = 20 * math.sin(progress_in_step * math.pi)
+            y -= arc_height
+
+            # Draw camel as a colored circle
+            camel_color = CAMEL_COLOR_MAP.get(color, WHITE)
+            camel_size = int(20 * scale)
+            pygame.draw.circle(surface, camel_color, (int(x), int(y)), camel_size)
+            # Draw outline
+            pygame.draw.circle(surface, tuple(max(0, c - 60) for c in camel_color), (int(x), int(y)), camel_size, width=2)
+
+        # Draw dust particles
+        for particle in self._dust_particles:
+            alpha = int(255 * (particle['life'] / 0.4))
+            particle_size = particle['size']
+            # Create sand-colored dust puff
+            dust_color = (212, 180, 131, alpha)  # Sand color with alpha
+            dust_surf = pygame.Surface((particle_size * 2, particle_size * 2), pygame.SRCALPHA)
+            pygame.draw.circle(dust_surf, dust_color, (particle_size, particle_size), particle_size)
+            surface.blit(dust_surf, (int(particle['x'] - particle_size), int(particle['y'] - particle_size)))
+
     def _draw_dice_anim_overlay(self, surface: pygame.Surface):
         """Draw animated dice roll overlay with tumbling die effect."""
         # Semi-transparent dark background
@@ -398,7 +604,7 @@ class GameScreen:
 
         # Draw the face number
         fn = load_font(48)
-        face_text = fn.render(str(face_index), True, WHITE)
+        face_text = fn.render(str(face_index), True, BLACK)
         text_rect = face_text.get_rect(center=(die_size // 2, die_size // 2))
         die_surf.blit(face_text, text_rect)
 

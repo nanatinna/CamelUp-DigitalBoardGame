@@ -52,9 +52,9 @@ class App:
         self.current_screen = GameScreen(self, self.game)
 
     def show_end_screen(self, game):
-        from gui.screens.end_screen import EndScreen
+        from gui.screens.results_screen import ResultsScreen
         self.ui_manager.clear_and_reset()
-        self.current_screen = EndScreen(self, game)
+        self.current_screen = ResultsScreen(self, game)
 
     # --------------------------------------------------------------- quit
     def quit(self):

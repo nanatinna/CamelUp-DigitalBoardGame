@@ -60,6 +60,24 @@ class CamelUpGame:
         if len(self.state.event_log) > 50:
             self.state.event_log = self.state.event_log[-50:]
 
+    def add_coin(self, player_idx: int, amount: int, source: str, detail: str = ""):
+        """
+        Award or deduct coins and log the source for the results screen.
+
+        Args:
+            player_idx: Index of player receiving coins
+            amount: Coins to add (can be negative for deductions)
+            source: Category of coin source (e.g., 'dice_roll', 'leg_bet', 'race_winner')
+            detail: Optional description of where coins came from
+        """
+        player = self.state.players[player_idx]
+        player.coins += amount
+        player.coin_log.append({
+            'source': source,
+            'amount': amount,
+            'detail': detail
+        })
+
     # -------------------------------------------------------- public actions
     def get_valid_actions(self, player_idx: int) -> list:
         if self.state.game_over:
@@ -95,7 +113,7 @@ class CamelUpGame:
             camel_color = die_color
 
         move_result = self.move_camel(camel_color, steps)
-        self.state.players[player_idx].coins += 1  # +1 coin for rolling
+        self.add_coin(player_idx, 1, 'dice_roll', f"Rolled {die_color}")
 
         end_of_leg = False
         # Leg ends when ALL 5 racing dice are exhausted (grey die may remain).
@@ -152,7 +170,7 @@ class CamelUpGame:
         if tile_info is not None:
             dtype = tile_info['type']
             owner_idx = tile_info['owner_idx']
-            self.state.players[owner_idx].coins += 1
+            self.add_coin(owner_idx, 1, 'desert_tile', f"{color} camel landed on your {'oasis' if dtype == 'oasis' else 'mirage'}")
             if dtype == 'oasis':
                 new_pos += 1
                 desert_effect = 'oasis'
@@ -176,10 +194,11 @@ class CamelUpGame:
             for dc in dest_camels:
                 dc.stack_order += sub_size
             base_order = 0
-        elif dest_camels:
+        elif not camel.is_crazy and dest_camels:
             # Racing camel goes ON TOP.
             base_order = max(c.stack_order for c in dest_camels) + 1
         else:
+            # No destination camels or the moving camel is being placed at the bottom
             base_order = 0
 
         # --- apply movement --------------------------------------------------
@@ -272,11 +291,11 @@ class CamelUpGame:
         for player in self.state.players:
             for bet in player.leg_bets:
                 if bet.camel_color == first:
-                    player.coins += bet.value
+                    self.add_coin(self.state.players.index(player), bet.value, 'leg_bet', f"Leg {self.state.leg_number}: 1st place on {first}")
                 elif second and bet.camel_color == second:
-                    player.coins += 1
+                    self.add_coin(self.state.players.index(player), 1, 'leg_bet', f"Leg {self.state.leg_number}: 2nd place on {second}")
                 else:
-                    player.coins -= 1
+                    self.add_coin(self.state.players.index(player), -1, 'leg_bet', f"Leg {self.state.leg_number}: Wrong bet on {bet.camel_color}")
             player.leg_bets = []
             player.desert_tile_placed = False
             player.desert_tile = None
@@ -312,19 +331,23 @@ class CamelUpGame:
 
         correct_w = 0
         for player, bet in winner_bets:
+            player_idx = self.state.players.index(player)
             if bet.camel_color == race_winner:
-                player.coins += pay(correct_w)
+                amount = pay(correct_w)
+                self.add_coin(player_idx, amount, 'race_winner', f"Correct winner bet on {race_winner}")
                 correct_w += 1
             else:
-                player.coins -= 1
+                self.add_coin(player_idx, -1, 'race_winner', f"Wrong winner bet on {bet.camel_color}")
 
         correct_l = 0
         for player, bet in loser_bets:
+            player_idx = self.state.players.index(player)
             if bet.camel_color == race_loser:
-                player.coins += pay(correct_l)
+                amount = pay(correct_l)
+                self.add_coin(player_idx, amount, 'race_loser', f"Correct loser bet on {race_loser}")
                 correct_l += 1
             else:
-                player.coins -= 1
+                self.add_coin(player_idx, -1, 'race_loser', f"Wrong loser bet on {bet.camel_color}")
 
         best = max(self.state.players, key=lambda p: p.coins)
         self.state.winner   = best.name

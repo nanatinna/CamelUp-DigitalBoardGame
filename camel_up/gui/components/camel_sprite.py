@@ -1,5 +1,5 @@
 import pygame
-from gui.theme import CAMEL_COLOR_MAP, CAMEL_W, CAMEL_H, WHITE, load_font
+from gui.theme import CAMEL_COLOR_MAP, CAMEL_W, CAMEL_H, WHITE, BLACK, load_font
 
 
 class CamelSprite:
@@ -22,12 +22,13 @@ class CamelSprite:
         surf = pygame.Surface((CAMEL_W, CAMEL_H), pygame.SRCALPHA)
         surf.fill((0, 0, 0, 0))
         rect = pygame.Rect(0, 0, CAMEL_W, CAMEL_H)
+        ink = BLACK if self.color == 'white' else WHITE
         pygame.draw.rect(surf, self.rgb, rect, border_radius=6)
-        pygame.draw.rect(surf, WHITE, rect, width=2, border_radius=6)
+        pygame.draw.rect(surf, ink, rect, width=2, border_radius=6)
         try:
             font = load_font(14)
             letter = self.color[0].upper()
-            text_surf = font.render(letter, True, WHITE)
+            text_surf = font.render(letter, True, ink)
             text_rect = text_surf.get_rect(center=(CAMEL_W // 2, CAMEL_H // 2))
             surf.blit(text_surf, text_rect)
         except Exception:
