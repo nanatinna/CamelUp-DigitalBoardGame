@@ -1,6 +1,7 @@
 import pygame
 import pygame_gui
 import os
+import math
 
 from gui.theme import (
     WOOD_DARK, WOOD_MID, TEXT_LIGHT, GOLD, WHITE, BLACK,
@@ -51,6 +52,13 @@ class GameScreen:
         self._dice_result_popup = False
         self._dice_result = None  # {'color': '', 'steps': 0, 'camel_moved': ''}
 
+        # Dice roll animation overlay state
+        self._dice_anim_active    = False      # Is animation playing?
+        self._dice_anim_progress  = 0.0        # 0.0 to 1.0
+        self._dice_anim_result    = None       # Stores result dict
+        self._dice_anim_frames    = 90         # Duration: 1.5 seconds at 60 FPS
+        self._dice_tumble_rotation = 0.0       # Current rotation angle for die tumble
+
         # Tile placement state
         self._tile_mode        = False
         self._tile_type        = None
@@ -79,6 +87,10 @@ class GameScreen:
 
     # --------------------------------------------------------------- events
     def handle_event(self, event: pygame.event.Event):
+        # Dice roll animation has exclusive focus
+        if self._dice_anim_active:
+            return  # Ignore all input while animating
+
         # Dice result popup has exclusive focus
         if self._dice_result_popup:
             self._handle_dice_result_event(event)
@@ -135,9 +147,11 @@ class GameScreen:
     def _do_roll(self):
         state  = self.game.get_state()
         result = self.game.roll_dice(state.current_player_idx)
-        # Show dice result popup
-        self._dice_result_popup = True
-        self._dice_result = result
+        # Trigger dice roll animation overlay
+        self._dice_anim_active = True
+        self._dice_anim_progress = 0.0
+        self._dice_anim_result = result
+        self._dice_tumble_rotation = 0.0
 
     def _post_action(self):
         pass
@@ -263,6 +277,18 @@ class GameScreen:
         self.board.update()
         self.dice_pyramid.update()
 
+        # Dice roll animation (1.5 seconds = 90 frames)
+        if self._dice_anim_active:
+            self._dice_anim_progress += (1.0 / self._dice_anim_frames)
+            self._dice_tumble_rotation += 0.12  # Continuous rotation
+
+            if self._dice_anim_progress >= 1.0:
+                # Animation complete, show result popup
+                self._dice_anim_active = False
+                self._dice_anim_progress = 0.0
+                self._dice_result_popup = True
+                self._dice_result = self._dice_anim_result
+
     # --------------------------------------------------------------- draw
     def draw(self, surface: pygame.Surface):
         self._get_fonts()
@@ -302,6 +328,8 @@ class GameScreen:
         self.event_log.draw(surface, state.event_log)
 
         # Overlays
+        if self._dice_anim_active:
+            self._draw_dice_anim_overlay(surface)
         if self._dice_result_popup:
             self._draw_dice_result_popup(surface)
         if self._bet_overlay:
@@ -310,6 +338,107 @@ class GameScreen:
             self._draw_tile_type_overlay(surface)
 
     # --------------------------------------------------- overlay rendering
+    def _draw_dice_anim_overlay(self, surface: pygame.Surface):
+        """Draw animated dice roll overlay with tumbling die effect."""
+        # Semi-transparent dark background
+        ov = pygame.Surface((WINDOW_W, WINDOW_H), pygame.SRCALPHA)
+        ov.fill((0, 0, 0, 180))
+        surface.blit(ov, (0, 0))
+
+        # Die properties
+        die_size = 120
+        die_x = WINDOW_W // 2 - die_size // 2
+        die_y = WINDOW_H // 2 - die_size // 2
+        die_center_x = WINDOW_W // 2
+        die_center_y = WINDOW_H // 2
+
+        if not self._dice_anim_result:
+            return
+
+        progress = self._dice_anim_progress
+        result = self._dice_anim_result
+        camel_color = result.get('camel_moved', result['color'])
+        steps = result['steps']
+
+        # Animation phases
+        # 0.0-0.67: Tumble phase (rapid face changes)
+        # 0.67-1.0: Settle phase (slow down and glow)
+
+        # Initialize bounce
+        bounce = 0
+
+        # Determine which face to show
+        if progress < 0.67:  # Tumble phase - rapid face cycling
+            # Cycle through faces 1,2,3 rapidly
+            face_index = int((progress / 0.67) * 15) % 3 + 1
+            scale = 1.0 + 0.1 * math.sin(progress * math.pi * 6)  # Wobble effect
+        else:  # Settle phase
+            face_index = steps  # Show final result
+            settle_t = (progress - 0.67) / 0.33
+            # Ease out for settling
+            settle_ease = 1.0 - (1.0 - settle_t) ** 2
+            # Bounce effect in last phase
+            if settle_t > 0.8:
+                bounce_t = (settle_t - 0.8) / 0.2
+                bounce = 5 * math.sin(bounce_t * math.pi)
+            else:
+                bounce = 0
+            scale = 1.0
+
+        # Draw die frame
+        die_rect = pygame.Rect(die_x, die_y + bounce, die_size, die_size)
+
+        # Rotate the surface visual (scaling effect)
+        rotation_angle = (progress * 360 * 3) % 360  # Multiple rotations
+
+        # Draw die background
+        die_surf = pygame.Surface((die_size, die_size))
+        die_surf.fill((232, 213, 163))  # PARCHMENT
+        pygame.draw.rect(die_surf, (212, 160, 23), die_surf.get_rect(), 2)  # GOLD border
+
+        # Draw the face number
+        fn = load_font(48)
+        face_text = fn.render(str(face_index), True, WHITE)
+        text_rect = face_text.get_rect(center=(die_size // 2, die_size // 2))
+        die_surf.blit(face_text, text_rect)
+
+        # Scale die for wobble effect
+        if scale != 1.0:
+            new_size = int(die_size * scale)
+            die_surf = pygame.transform.smoothscale(die_surf, (new_size, new_size))
+            die_x = WINDOW_W // 2 - new_size // 2
+            die_y = WINDOW_H // 2 - new_size // 2
+
+        surface.blit(die_surf, (die_x, die_y + bounce))
+
+        # Glow effect (last phase)
+        if progress > 0.67:
+            glow_alpha = int(255 * max(0, (progress - 0.67) / 0.33))
+            camel_rgb = CAMEL_COLOR_MAP.get(camel_color, WHITE)
+
+            # Draw glow circle
+            glow_radius = int(die_size * 0.7)
+            glow_surf = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
+            pygame.draw.circle(glow_surf, (*camel_rgb, glow_alpha),
+                             (glow_radius, glow_radius), glow_radius, width=4)
+            glow_x = WINDOW_W // 2 - glow_radius
+            glow_y = WINDOW_H // 2 - glow_radius
+            surface.blit(glow_surf, (glow_x, glow_y + bounce))
+
+        # Result text (fades in last phase)
+        if progress > 0.70:
+            text_alpha = int(255 * max(0, (progress - 0.70) / 0.30))
+            camel_name = camel_color.capitalize()
+            result_text = f"{camel_name} — {steps} step{'s' if steps != 1 else ''}!"
+
+            fn_result = load_font(20)
+            text_surf = fn_result.render(result_text, True, GOLD)
+
+            # Apply alpha
+            text_surf.set_alpha(text_alpha)
+            text_rect = text_surf.get_rect(center=(WINDOW_W // 2, die_y + die_size + 30))
+            surface.blit(text_surf, text_rect)
+
     def _draw_dice_result_popup(self, surface: pygame.Surface):
         """Draw a full-screen dice result popup."""
         # Semi-transparent overlay
