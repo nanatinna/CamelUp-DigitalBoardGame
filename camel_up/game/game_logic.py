@@ -122,10 +122,10 @@ class CamelUpGame:
         end_of_leg = False
         # A leg spans exactly 5 rolls from a pyramid of 6 dice.
         # After 5 removals, exactly 1 die remains — fire end_leg() immediately,
-        # before a 6th roll can happen.  This works whether the unused die is
-        # grey or a colored die (grey counts as a turn, not toward the 5-colored
-        # die count, so when grey is rolled only 4 colored dice finish that leg).
-        if not self.state.game_over and len(self.state.dice_remaining) <= 1:
+        # before a 6th roll can happen.  Use == 1 (not <= 1) so that an
+        # artificial state with only grey left doesn't spuriously end the leg
+        # when that grey die is the one being rolled (leaving 0 remaining).
+        if not self.state.game_over and len(self.state.dice_remaining) == 1:
             self.end_leg()
             end_of_leg = True
 

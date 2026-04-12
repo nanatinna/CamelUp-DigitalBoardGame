@@ -1,6 +1,17 @@
 # Camel Up — Python Desktop Game
 
-A complete Python/pygame implementation of the board game **Camel Up** (Camel Cup), built as a university course project.
+A complete Python/Pygame implementation of **Camel Up 2.0**, built as a university course project.
+
+The game features 5 racing camels and 2 crazy camels that move backward, camel stacking, oasis/mirage desert tiles, leg bets, race bets, and a full GUI with animations.
+
+---
+
+## Requirements
+
+- Python 3.10+
+- `pygame-ce >= 2.5.0`
+- `pygame_gui >= 0.6.0`
+- `Pillow >= 10.0.0`
 
 ---
 
@@ -27,91 +38,104 @@ python3 camel_up/main.py
 ## How to Play
 
 ### Setup
-- Choose 2–4 players and enter names on the Start Screen.
-- Five camels (Blue, Green, Orange, Yellow, White) are placed randomly on tiles 1–3.
+- Enter 2–4 player names on the Start Screen.
+- **5 racing camels** (Green, Purple, Yellow, Blue, Red) are placed randomly on tiles 1–3.
+- **2 crazy camels** (Black, White) are placed randomly on tiles 14–16 — they move **backward**.
 
 ### On Your Turn, Choose One Action
 
 | Action | Effect |
 |--------|--------|
-| **Roll Dice** | Pull a random unused pyramid die (1–3 steps). That camel moves. You gain **+1 coin**. When all 5 dice are used, the leg ends. |
-| **Leg Bet** | Take a betting tile for which camel will finish the leg in 1st or 2nd place. Pays **5 / 3 / 2 / 1** coins if correct, **-1** if wrong. |
-| **Race Bet** | Secretly predict the overall race **winner** or **loser**. First correct bet pays most. |
-| **Place Desert Tile** | Put an **Oasis (+1)** or **Mirage (-1)** tile on any empty, unoccupied tile ≥ 2. When a camel lands on it, they bounce forward/back and you earn **+1 coin**. |
+| **Roll Dice** | Pull a random unused die from the pyramid (1–3 steps). The camel moves. You earn **+1 coin**. The grey die moves a random crazy camel backward. A leg lasts exactly **5 dice rolls**. |
+| **Leg Bet** | Take a tile predicting which camel finishes the leg in **1st or 2nd**. Pays **5 / 3 / 2 / 1** coins if 1st, **1** coin if 2nd, **−1** if wrong. |
+| **Race Bet** | Secretly predict the overall race **winner** or **loser**. Earlier correct bets pay more (8 / 5 / 3 / 2 / 1). |
+| **Desert Tile** | Place an **Oasis (+1)** or **Mirage (−1)** tile on any empty tile ≥ 2. When a camel lands on it you earn **+1 coin**, and the camel is nudged forward/backward. |
 
-### Stacking
-When a camel lands on a tile with others, it stacks **on top**. Moving a camel carries all camels above it as a piggyback stack.
+### Camel Stacking
+When a racing camel lands on an occupied tile it stacks **on top**. Crazy camels slide **under** the existing stack. Moving a camel carries its entire piggyback stack.
+
+### Desert Tiles and Crazy Camels
+Desert tiles push a camel one extra step in the direction it is already travelling:
+- **Racing camel on Oasis** → +1 forward
+- **Racing camel on Mirage** → −1 backward
+- **Crazy camel on Oasis** → −1 (further backward)
+- **Crazy camel on Mirage** → +1 (back toward higher tiles)
 
 ### End of Leg
-When all 5 dice are used, leg bets are scored and dice reset. Desert tiles are removed.
+After 5 dice are rolled, a **Leg Summary popup** appears showing standings, bet payouts, coin changes per player, and a recap of every die rolled that leg. Click **NEXT LEG** to continue. Dice and desert tiles reset; leg bets clear.
 
 ### End of Race
-When any camel crosses tile 16, race bets are scored. The player with the most coins wins!
+When any racing camel crosses tile 16, race bets are scored and the **Results Screen** shows a full breakdown per player. The player with the most coins wins!
 
 ---
 
 ## Features
 
-- Full Camel Up rule set including camel stacking, oasis/mirage desert tiles, leg bets, and race bets
+- Full Camel Up 2.0 rule set: 5 racing + 2 crazy camels, stacking rules, desert tiles, leg bets, and race bets
 - Desert warm visual theme — sand, wood panels, parchment cards
-- Smooth camel movement animation (tweened over 20 frames)
-- Animated dice pyramid showing used/remaining dice
+- Smooth camel movement animation with speed proportional to steps rolled
+- Dice Tracker panel showing rolled values and a Last Roll banner each leg
+- Animated dice roll overlay when a die is pulled
+- Leg Summary popup at the end of every leg
 - Scrollable event log tracking every action
-- SQLite leaderboard of past games on the start screen
-- Auto-save to `autosave.json` after every action — load it on next launch
-- Fallback procedural asset generation (runs without any image files)
-- All exceptions caught and logged to `errors.log` — game loop never crashes
-- 41 unit tests covering all game logic
+- SQLite leaderboard of past completed games on the start screen
+- Auto-save to `autosave.json` after every action — resumes on next launch
+- Results screen with per-player coin breakdown at game end
+- All exceptions logged to `errors.log` — the game loop never crashes
 
 ---
 
 ## File Structure
 
 ```
-CamelUp/
+CamelUp-DigitalBoardGame/
 ├── requirements.txt
 ├── README.md
-├── camel_up.db               ← auto-created on first run
-├── autosave.json             ← auto-created during gameplay
 └── camel_up/
-    ├── main.py               ← entry point
+    ├── main.py                      ← entry point
     ├── assets/
-    │   ├── theme.json        ← pygame_gui desert theme
-    │   └── images/           ← optional image assets
+    │   ├── fonts/
+    │   │   └── Cinzel-Bold.otf
+    │   ├── images/
+    │   │   ├── game_background.png
+    │   │   └── logo.png
+    │   └── theme.json               ← pygame_gui desert theme
     ├── game/
-    │   ├── models.py         ← dataclasses: Camel, Player, GameState …
-    │   ├── game_logic.py     ← CamelUpGame: all rules and stacking logic
-    │   └── utils.py          ← logging, helpers
+    │   ├── models.py                ← dataclasses: Camel, Player, GameState …
+    │   ├── game_logic.py            ← CamelUpGame: all rules and stacking logic
+    │   └── utils.py                 ← logging helpers
     ├── gui/
-    │   ├── app.py            ← main pygame loop + screen manager
-    │   ├── theme.py          ← colours, layout constants, fallback surfaces
+    │   ├── app.py                   ← pygame loop + screen manager
+    │   ├── theme.py                 ← colours, layout constants
     │   ├── components/
-    │   │   ├── board.py      ← 16-tile oval track renderer
-    │   │   ├── camel_sprite.py  ← animated camel token
-    │   │   ├── bet_card.py   ← leg-bet tile display
-    │   │   ├── dice_pyramid.py  ← pyramid with roll animation
-    │   │   ├── player_hud.py ← left panel: players + action buttons
-    │   │   └── event_log.py  ← scrollable bottom log strip
+    │   │   ├── bet_card.py          ← leg-bet tile panel
+    │   │   ├── board.py             ← 16-tile track renderer
+    │   │   ├── camel_sprite.py      ← animated camel token
+    │   │   ├── dice_pyramid.py      ← dice tracker with roll animation
+    │   │   ├── event_log.py         ← scrollable event log strip
+    │   │   ├── leg_summary_popup.py ← end-of-leg summary overlay
+    │   │   └── player_hud.py        ← left panel: players + action buttons
     │   └── screens/
-    │       ├── start_screen.py
-    │       ├── game_screen.py
-    │       └── end_screen.py
+    │       ├── start_screen.py      ← player setup + leaderboard
+    │       ├── game_screen.py       ← main game view
+    │       ├── results_screen.py    ← per-player coin breakdown
+    │       └── end_screen.py        ← winner announcement
     ├── storage/
-    │   ├── database.py       ← SQLite schema + queries
-    │   ├── save_manager.py   ← JSON autosave / load
-    │   └── history.py        ← GameHistory wrapper
+    │   ├── database.py              ← SQLite schema + queries
+    │   ├── save_manager.py          ← JSON autosave / load
+    │   └── history.py               ← GameHistory wrapper
     └── tests/
         ├── test_models.py
         └── test_game_logic.py
 ```
 
+> `autosave.json`, `camel_up.db`, and `errors.log` are created automatically at runtime and are excluded from version control via `.gitignore`.
+
 ---
 
 ## Running Tests
 
-```bat
+```bash
 cd camel_up
 python -m unittest discover -s tests -p "test_*.py" -v
 ```
-
-Expected: **41 tests, 0 failures**
