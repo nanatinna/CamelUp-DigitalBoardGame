@@ -83,7 +83,11 @@ class CamelUpGame:
         if self.state.game_over:
             return []
         player = self.state.players[player_idx]
-        actions = ['roll']
+        actions = []
+
+        # Roll is only available while there are dice left in the pyramid this leg
+        if self.state.dice_remaining:
+            actions.append('roll')
 
         # Leg bet: at least one racing camel still has tiles
         if any(len(t) > 0 for t in self.state.available_leg_bets.values()):
@@ -116,12 +120,14 @@ class CamelUpGame:
         self.add_coin(player_idx, 1, 'dice_roll', f"Rolled {die_color}")
 
         end_of_leg = False
-        # Leg ends when ALL 5 racing dice are exhausted (grey die may remain).
-        if die_color in CAMEL_COLORS and not self.state.game_over:
-            racing_left = [c for c in self.state.dice_remaining if c in CAMEL_COLORS]
-            if not racing_left:
-                self.end_leg()
-                end_of_leg = True
+        # A leg spans exactly 5 rolls from a pyramid of 6 dice.
+        # After 5 removals, exactly 1 die remains — fire end_leg() immediately,
+        # before a 6th roll can happen.  This works whether the unused die is
+        # grey or a colored die (grey counts as a turn, not toward the 5-colored
+        # die count, so when grey is rolled only 4 colored dice finish that leg).
+        if not self.state.game_over and len(self.state.dice_remaining) <= 1:
+            self.end_leg()
+            end_of_leg = True
 
         new_position = move_result['new_pos']
         camel = self._get_camel_by_color(camel_color)
@@ -171,11 +177,14 @@ class CamelUpGame:
             dtype = tile_info['type']
             owner_idx = tile_info['owner_idx']
             self.add_coin(owner_idx, 1, 'desert_tile', f"{color} camel landed on your {'oasis' if dtype == 'oasis' else 'mirage'}")
+            # Crazy camels travel backward (-), so desert effects are flipped:
+            # oasis pushes further in the travel direction, mirage pushes back.
+            step = -1 if camel.is_crazy else 1
             if dtype == 'oasis':
-                new_pos += 1
+                new_pos += step
                 desert_effect = 'oasis'
             elif dtype == 'mirage':
-                new_pos -= 1
+                new_pos -= step
                 desert_effect = 'mirage'
 
         # Clamp: never below 1

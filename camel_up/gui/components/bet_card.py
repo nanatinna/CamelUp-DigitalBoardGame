@@ -110,5 +110,5 @@ class BetCard:
 
             # Next payout
             if tiles:
-                pay = self._font_title.render(str(tiles[0]), True, GOLD)
+                pay = self._font_title.render(str(tiles[0]), True, TEXT_DARK)
                 surface.blit(pay, (card_rect.right - 28, card_rect.centery - 8))

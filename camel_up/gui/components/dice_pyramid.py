@@ -73,6 +73,14 @@ class DicePyramid:
         self._pop_progress = 0.0
         self._pop_active   = True
 
+    def set_last_roll(self, die_color: str, value: int, camel_moved: str = None) -> None:
+        """Update the Last Roll banner only — does not add the die to the tracker list."""
+        is_crazy = die_color == 'grey'
+        self._pop_result = (die_color, value, is_crazy, camel_moved)
+        self._pop_color = die_color
+        self._pop_progress = 1.0
+        self._pop_active = False
+
     def update(self):
         if self._pop_active:
             self._pop_progress += 0.05
@@ -89,6 +97,9 @@ class DicePyramid:
         if leg_number != self._current_leg:
             self._rolled = {}
             self._rolled_order = []
+            self._pop_result = None
+            self._pop_color = None
+            self._pop_active = False
             self._current_leg = leg_number
 
         # Panel background

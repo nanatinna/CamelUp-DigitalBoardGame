@@ -10,13 +10,14 @@ from gui.theme import (
     LEFT_PANEL_W, RIGHT_PANEL_W, CENTER_W, MAIN_H,
     CAMEL_COLOR_MAP, generate_background_surface, load_font,
 )
-from gui.components.board       import Board
-from gui.components.player_hud  import PlayerHud
-from gui.components.bet_card    import BetCard
-from gui.components.dice_pyramid import DicePyramid
-from gui.components.event_log   import EventLog
-from game.game_logic             import CamelUpGame
-from game.models                 import CAMEL_COLORS
+from gui.components.board            import Board
+from gui.components.player_hud       import PlayerHud
+from gui.components.bet_card         import BetCard
+from gui.components.dice_pyramid     import DicePyramid
+from gui.components.event_log        import EventLog
+from gui.components.leg_summary_popup import LegSummaryPopup
+from game.game_logic                 import CamelUpGame
+from game.models                     import CAMEL_COLORS
 
 
 class GameScreen:
@@ -72,6 +73,15 @@ class GameScreen:
         self._tile_type        = None
         self._tile_type_overlay = False
 
+        # Leg summary popup
+        self._leg_summary        = LegSummaryPopup()
+        self._pending_leg_summary: dict | None = None
+
+        # Track per-leg coin baseline so summary can show full-leg deltas.
+        # Updated in draw() whenever leg_number changes (after each leg reset).
+        self._leg_start_coins: dict = {}
+        self._tracked_leg: int     = 0
+
         self.game_start_time = pygame.time.get_ticks()
         self._logo = None
 
@@ -95,6 +105,11 @@ class GameScreen:
 
     # --------------------------------------------------------------- events
     def handle_event(self, event: pygame.event.Event):
+        # Leg summary popup has exclusive focus (highest priority)
+        if self._leg_summary.is_open():
+            self._leg_summary.handle_event(event)
+            return
+
         # Camel walk animation has exclusive focus
         if self._camel_walk_active:
             return  # Ignore input while walking
@@ -163,11 +178,76 @@ class GameScreen:
         # roll_dice() will update the state immediately, so we need the old state
         pre_roll_state = {c.color: (c.position, c.stack_order) for c in state.camels}
 
+        # Leg summary: capture pre-roll data (leg_bets cleared by end_leg inside roll_dice)
+        _pre_coins = {p.name: p.coins for p in state.players}
+        _pre_bets  = {
+            p.name: [(b.camel_color, b.value) for b in p.leg_bets]
+            for p in state.players
+        }
+        _completed_leg = state.leg_number
+
         result = self.game.roll_dice(state.current_player_idx)
+        # If end_of_leg, end_leg() has now run: bets scored, dice/leg_number reset.
 
         # CRITICAL: Capture the FINAL state AFTER rolling (before restoring for animation)
         # This includes the correct stack_orders after move_camel updated them
         post_roll_state = {c.color: (c.position, c.stack_order) for c in state.camels}
+
+        # Build leg summary data while camel positions are still post-move and
+        # pre-restore (get_leg_standings() reads current camel positions).
+        if result.get('end_of_leg'):
+            standings = self.game.get_leg_standings()
+            first     = standings[0] if standings else None
+            second    = standings[1] if len(standings) > 1 else None
+
+            # Compute payout per bet (mirrors end_leg logic, display only)
+            bets = []
+            for pname, pbet_list in _pre_bets.items():
+                for camel_color, card_value in pbet_list:
+                    if camel_color == first:
+                        payout = card_value
+                    elif camel_color == second:
+                        payout = 1
+                    else:
+                        payout = -1
+                    bets.append({
+                        'player': pname,
+                        'camel':  camel_color,
+                        'card':   card_value,
+                        'payout': payout,
+                    })
+
+            # Full-leg coin delta: post-roll coins (include this turn's payouts)
+            # vs. coins at leg start (tracked in draw() when leg_number changes).
+            post_coins = {p.name: p.coins for p in state.players}
+            leg_start  = self._leg_start_coins  # set at start of this leg in draw()
+            player_changes = [
+                {
+                    'name':   p.name,
+                    'change': post_coins.get(p.name, 0) - leg_start.get(p.name, _pre_coins.get(p.name, 0)),
+                    'total':  post_coins.get(p.name, 0),
+                }
+                for p in state.players
+            ]
+
+            # Dice recap: all dice animated so far + current die
+            dice_recap_order  = list(self.dice_pyramid._rolled_order)
+            dice_recap_values = dict(self.dice_pyramid._rolled)
+            if result['color'] not in dice_recap_values:
+                dice_recap_order.append(result['color'])
+                dice_recap_values[result['color']] = result['steps']
+            dice_recap = [{'color': c, 'value': dice_recap_values[c]}
+                          for c in dice_recap_order]
+
+            self._pending_leg_summary = {
+                'leg_number':     _completed_leg,
+                'first':          first,
+                'second':         second,
+                'standings':      standings,
+                'bets':           bets,
+                'player_changes': player_changes,
+                'dice':           dice_recap,
+            }
 
         # Store the starting position in the result for walk animation
         camel_moved = result.get('camel_moved')
@@ -261,11 +341,15 @@ class GameScreen:
         if camel_moved and new_pos:
             self.board.animate_camel_move(camel_moved, new_pos)
 
-        # Animate dice pyramid
+        # Animate dice pyramid — skip the leg-ending die: it belongs to the
+        # completed leg, not the new one, and end_leg() already incremented
+        # leg_number so the tracker has been (or will be) cleared for leg N+1.
         die_color = result.get('color', '')
         steps = result.get('steps', 0)
-        if die_color and steps:
+        if die_color and steps and not result.get('end_of_leg'):
             self.dice_pyramid.animate_roll(die_color, steps, camel_moved)
+        elif die_color and steps and result.get('end_of_leg'):
+            self.dice_pyramid.set_last_roll(die_color, steps, camel_moved)
 
         # Advance game state
         if not self.game.get_state().game_over:
@@ -273,6 +357,12 @@ class GameScreen:
         self._post_action()
         if self.game.get_state().game_over:
             self.app.show_end_screen(self.game)
+            return
+
+        # Show leg summary popup if this roll ended a leg
+        if self._pending_leg_summary is not None:
+            self._leg_summary.open(self._pending_leg_summary)
+            self._pending_leg_summary = None
 
     # --------------------------------------------------------- bet overlay
     def _handle_bet_event(self, event: pygame.event.Event):
@@ -414,6 +504,12 @@ class GameScreen:
 
         state = self.game.get_state()
 
+        # Track per-leg coin baseline for the summary popup.
+        # Fires once per leg when leg_number increments (after end_leg reset).
+        if state.leg_number != self._tracked_leg:
+            self._leg_start_coins = {p.name: p.coins for p in state.players}
+            self._tracked_leg     = state.leg_number
+
         # Top bar
         pygame.draw.rect(surface, WOOD_DARK, pygame.Rect(0, 0, WINDOW_W, TOP_BAR_H))
         pygame.draw.rect(surface, WOOD_MID,  pygame.Rect(0, 0, WINDOW_W, TOP_BAR_H), width=2)
@@ -441,7 +537,7 @@ class GameScreen:
         self.dice_pyramid.draw(surface, state.dice_remaining, state.leg_number)
         self.event_log.draw(surface, state.event_log)
 
-        # Overlays
+        # Overlays (drawn in z-order: lowest → highest)
         if self._camel_walk_active:
             self._draw_camel_walk_overlay(surface)
         if self._dice_anim_active:
@@ -452,6 +548,9 @@ class GameScreen:
             self._draw_bet_overlay(surface, state)
         if self._tile_type_overlay:
             self._draw_tile_type_overlay(surface)
+        # Leg summary sits on top of everything else
+        if self._leg_summary.is_open():
+            self._leg_summary.draw(surface)
 
     # --------------------------------------------------- overlay rendering
     def _draw_camel_walk_overlay(self, surface: pygame.Surface):
