@@ -14,6 +14,7 @@ env/
 camel_up/autosave.json
 camel_up/camel_up.db
 camel_up/errors.log
+errors.log
 
 # IDE / OS
 .vscode/
@@ -23,3 +24,4 @@ Thumbs.db
 
 # Claude Code local settings
 .claude/settings.local.json
+.claude

@@ -53,6 +53,12 @@ class App:
 
     def show_end_screen(self, game):
         from gui.screens.results_screen import ResultsScreen
+        from storage.database import save_game
+        duration = (pygame.time.get_ticks() - self._game_start_time) // 1000
+        try:
+            save_game(game.get_state(), duration)
+        except Exception as e:
+            logger.error(f"save_game failed: {e}")
         self.ui_manager.clear_and_reset()
         self.current_screen = ResultsScreen(self, game)
 
